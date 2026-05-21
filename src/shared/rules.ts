@@ -33,7 +33,7 @@ const RULES: Rule[] = [
   },
   {
     patterns: [/\bphone\b/, /\bmobile\b/, /\btel\b/, /\bcell\b/, /\bcontact[\s\-_]?number\b/],
-    generate: () => faker.phone.number({ style: 'international' }),
+    generate: () => faker.phone.number(),
   },
   {
     patterns: [/\baddress\b/, /\bstreet\b/],
