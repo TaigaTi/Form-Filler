@@ -1,0 +1,66 @@
+<h2>How should filling work after triggering?</h2>
+<p class="subtitle">Choose what happens when you press Ctrl+Shift+F or click "Fill Fields"</p>
+
+<div class="split">
+
+  <div class="mockup">
+    <div class="mockup-header">A — Fill Immediately</div>
+    <div class="mockup-body" style="font-size:12px;font-family:sans-serif">
+      <div style="color:#888;margin-bottom:8px;font-size:11px">↓ Fields are filled instantly with no confirmation step</div>
+      <div style="margin-bottom:6px">
+        <div style="color:#aaa;font-size:10px;margin-bottom:2px">First Name</div>
+        <div style="background:#1e3a2f;border:1px solid #2d6a4f;border-radius:3px;padding:5px 8px;color:#57cc99">James</div>
+      </div>
+      <div style="margin-bottom:6px">
+        <div style="color:#aaa;font-size:10px;margin-bottom:2px">Email</div>
+        <div style="background:#1e3a2f;border:1px solid #2d6a4f;border-radius:3px;padding:5px 8px;color:#57cc99">james.m@example.com</div>
+      </div>
+      <div style="margin-bottom:6px">
+        <div style="color:#aaa;font-size:10px;margin-bottom:2px">Testimonial</div>
+        <div style="background:#1e3a2f;border:1px solid #2d6a4f;border-radius:3px;padding:5px 8px;color:#57cc99;font-size:10px">Outstanding product that exceeded all my expectations.</div>
+      </div>
+      <div style="margin-top:10px;background:#2d6a4f;color:#fff;text-align:center;padding:5px;border-radius:4px;font-size:11px">✓ 6 fields filled in 0.3s</div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">B — Preview Before Fill</div>
+    <div class="mockup-body" style="font-size:12px;font-family:sans-serif">
+      <div style="color:#888;margin-bottom:8px;font-size:11px">↓ A panel appears showing what will be entered</div>
+      <div style="background:#1a1a2e;border:1px solid #4a4a6a;border-radius:4px;padding:8px;margin-bottom:8px">
+        <div style="color:#9d9aff;font-size:10px;font-weight:bold;margin-bottom:5px">PREVIEW</div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px;font-size:10px">
+          <span style="color:#888">First Name</span><span style="color:#ccc">James</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px;font-size:10px">
+          <span style="color:#888">Email</span><span style="color:#ccc">james.m@example.com</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px;font-size:10px">
+          <span style="color:#888">Testimonial</span><span style="color:#ccc;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Outstanding product...</span>
+        </div>
+        <div style="display:flex;gap:4px;margin-top:8px">
+          <div style="flex:1;background:#6c63ff;color:#fff;text-align:center;padding:4px;border-radius:3px;font-size:10px;cursor:pointer">Apply</div>
+          <div style="background:#2d2d44;color:#888;text-align:center;padding:4px;border-radius:3px;font-size:10px;width:50px;cursor:pointer">Cancel</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="options" style="margin-top:16px">
+  <div class="option" data-choice="immediate" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Fill Immediately</h3>
+      <p>Zero friction. Ctrl+Z undoes if needed. Best for rapid testing where you just want fields filled fast.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="preview" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Preview Before Fill</h3>
+      <p>See and optionally edit generated values before they're applied. Better when you care about what's entered.</p>
+    </div>
+  </div>
+</div>

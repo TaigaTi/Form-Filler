@@ -13,6 +13,34 @@ function getFieldType(
   return (valid as string[]).includes(t) ? (t as FieldType) : 'other';
 }
 
+function resolveHint(el: HTMLElement, doc: Document): string {
+  // aria-describedby
+  const describedById = el.getAttribute('aria-describedby');
+  if (describedById) {
+    const text = doc.getElementById(describedById)?.textContent?.trim();
+    if (text) return text;
+  }
+
+  // Following siblings: <small> always qualifies; other elements need a hint-like class
+  let sibling = el.nextElementSibling;
+  let checked = 0;
+  while (sibling && checked < 3) {
+    const tag = sibling.tagName.toLowerCase();
+    const cls = sibling.className?.toLowerCase() ?? '';
+    const isHintElement =
+      tag === 'small' ||
+      /hint|help|note|caption|helper|info|format|description/.test(cls);
+    if (isHintElement) {
+      const text = sibling.textContent?.trim();
+      if (text) return text;
+    }
+    sibling = sibling.nextElementSibling;
+    checked++;
+  }
+
+  return '';
+}
+
 function resolveLabel(el: HTMLElement, doc: Document): string {
   // Priority 1: aria-label
   const ariaLabel = el.getAttribute('aria-label')?.trim();
@@ -103,6 +131,24 @@ export function extractFields(doc: Document = document): FieldMeta[] {
       label: resolveLabel(el, doc),
       type,
     };
+
+    const pattern = el.getAttribute('pattern');
+    if (pattern) meta.pattern = pattern;
+
+    const maxLengthAttr = el.getAttribute('maxlength');
+    if (maxLengthAttr !== null) {
+      const n = parseInt(maxLengthAttr, 10);
+      if (n > 0) meta.maxLength = n;
+    }
+
+    const minAttr = el.getAttribute('min');
+    if (minAttr !== null) meta.min = minAttr;
+
+    const maxAttr = el.getAttribute('max');
+    if (maxAttr !== null) meta.max = maxAttr;
+
+    const hint = resolveHint(el, doc);
+    if (hint) meta.hint = hint;
 
     if (type === 'select') {
       meta.options = Array.from((el as HTMLSelectElement).options)

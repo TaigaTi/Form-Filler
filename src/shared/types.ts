@@ -11,6 +11,11 @@ export interface FieldMeta {
   type: FieldType;
   options?: string[];   // select options or radio values
   groupName?: string;   // name attribute for radio/checkbox groups
+  pattern?: string;     // HTML pattern attribute (regex, no anchors)
+  maxLength?: number;   // HTML maxlength attribute
+  min?: string;         // HTML min attribute (number/date inputs)
+  max?: string;         // HTML max attribute (number/date inputs)
+  hint?: string;        // hint/help text near the field
 }
 
 export interface FillInstruction {

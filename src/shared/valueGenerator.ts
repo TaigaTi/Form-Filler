@@ -25,10 +25,22 @@ export function generateValue(field: FieldMeta): string | boolean | null {
       return d.toISOString().slice(0, 16);
     }
 
-    case 'number':
-      return String(faker.number.int({ min: 1, max: 100 }));
+    case 'number': {
+      const min = field.min !== undefined ? parseFloat(field.min) : 1;
+      const max = field.max !== undefined ? parseFloat(field.max) : 100;
+      return String(faker.number.int({
+        min: isNaN(min) ? 1 : min,
+        max: isNaN(max) ? 100 : max,
+      }));
+    }
 
-    default:
-      return matchRule(field.label);
+    default: {
+      const value = matchRule(field.label);
+      if (value === null) return null;
+      if (field.maxLength && value.length > field.maxLength) {
+        return value.slice(0, field.maxLength);
+      }
+      return value;
+    }
   }
 }

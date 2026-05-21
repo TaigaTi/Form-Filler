@@ -15,7 +15,8 @@ async function getSettings(): Promise<StoredSettings> {
 
 async function getAiValues(
   labels: string[],
-  apiKey: string
+  apiKey: string,
+  fieldMetas: FieldMeta[]
 ): Promise<Record<string, string>> {
   const cacheKeys = labels.map((l) => `ai_cache_${l}`);
   const cached = await chrome.storage.local.get(cacheKeys);
@@ -28,6 +29,16 @@ async function getAiValues(
   }
 
   if (uncached.length === 0 || !apiKey) return result;
+
+  // Build field descriptions with pattern/hint context so Claude generates valid values
+  const fieldDescriptions = uncached.map((label) => {
+    const meta = fieldMetas.find((f) => f.label === label);
+    const extras: string[] = [];
+    if (meta?.hint) extras.push(`hint: "${meta.hint}"`);
+    if (meta?.pattern) extras.push(`pattern: ${meta.pattern}`);
+    if (meta?.maxLength) extras.push(`max length: ${meta.maxLength}`);
+    return extras.length > 0 ? `"${label}" (${extras.join(', ')})` : `"${label}"`;
+  });
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -46,8 +57,9 @@ async function getAiValues(
             content:
               `You are filling a web form with realistic fake data for testing. ` +
               `Return a JSON object mapping each field label to an appropriate fake value. ` +
-              `Be concise — values should be realistic but brief.\n\n` +
-              `Fields: ${JSON.stringify(uncached)}`,
+              `Be concise — values should be realistic but brief. ` +
+              `For fields with a pattern, the value MUST match the pattern exactly.\n\n` +
+              `Fields: [${fieldDescriptions.join(', ')}]`,
           },
         ],
       }),
@@ -105,6 +117,15 @@ async function runFill(tabId: number): Promise<FillResult> {
   for (const field of fields) {
     const value = generateValue(field);
     if (value !== null) {
+      // Validate string values against the field's pattern attribute
+      if (field.pattern && typeof value === 'string') {
+        try {
+          if (!new RegExp(`^(?:${field.pattern})$`).test(value)) {
+            aiNeeded.push(field);
+            continue;
+          }
+        } catch { /* invalid regex — skip pattern check */ }
+      }
       instructions.push({ fieldId: field.id, value });
     } else {
       aiNeeded.push(field);
@@ -116,11 +137,15 @@ async function runFill(tabId: number): Promise<FillResult> {
   if (aiNeeded.length > 0) {
     const settings = await getSettings();
     const uniqueLabels = [...new Set(aiNeeded.map((f) => f.label))];
-    const aiValues = await getAiValues(uniqueLabels, settings.claudeApiKey);
+    const aiValues = await getAiValues(uniqueLabels, settings.claudeApiKey, aiNeeded);
 
     for (const field of aiNeeded) {
-      const value = aiValues[field.label];
+      let value = aiValues[field.label];
       if (value !== undefined) {
+        // Respect maxLength for AI-generated values too
+        if (field.maxLength && value.length > field.maxLength) {
+          value = value.slice(0, field.maxLength);
+        }
         instructions.push({ fieldId: field.id, value });
         aiFieldCount++;
       }

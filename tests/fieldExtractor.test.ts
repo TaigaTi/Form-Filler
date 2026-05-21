@@ -138,4 +138,48 @@ describe('extractFields', () => {
     const fields = extractFields(doc);
     expect(fields[0].id).not.toBe(fields[1].id);
   });
+
+  it('extracts pattern attribute', () => {
+    const doc = makeDoc(`<input type="text" aria-label="Postcode" pattern="[A-Z]{2}[0-9]{1,2} [0-9][A-Z]{2}" />`);
+    const fields = extractFields(doc);
+    expect(fields[0].pattern).toBe('[A-Z]{2}[0-9]{1,2} [0-9][A-Z]{2}');
+  });
+
+  it('extracts maxlength attribute', () => {
+    const doc = makeDoc(`<input type="text" aria-label="Code" maxlength="6" />`);
+    const fields = extractFields(doc);
+    expect(fields[0].maxLength).toBe(6);
+  });
+
+  it('extracts min and max attributes', () => {
+    const doc = makeDoc(`<input type="number" aria-label="Age" min="18" max="65" />`);
+    const fields = extractFields(doc);
+    expect(fields[0].min).toBe('18');
+    expect(fields[0].max).toBe('65');
+  });
+
+  it('extracts hint text from aria-describedby', () => {
+    const doc = makeDoc(`
+      <span id="ph">Format: AA9 9AA</span>
+      <input type="text" aria-label="Postcode" aria-describedby="ph" />
+    `);
+    const fields = extractFields(doc);
+    expect(fields[0].hint).toBe('Format: AA9 9AA');
+  });
+
+  it('extracts hint text from following <small> sibling', () => {
+    const doc = makeDoc(`
+      <input type="text" aria-label="Phone" />
+      <small>Format: +1-XXX-XXX-XXXX</small>
+    `);
+    const fields = extractFields(doc);
+    expect(fields[0].hint).toBe('Format: +1-XXX-XXX-XXXX');
+  });
+
+  it('does not set pattern or hint when absent', () => {
+    const doc = makeDoc(`<input type="text" aria-label="Name" />`);
+    const fields = extractFields(doc);
+    expect(fields[0].pattern).toBeUndefined();
+    expect(fields[0].hint).toBeUndefined();
+  });
 });

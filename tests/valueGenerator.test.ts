@@ -67,4 +67,15 @@ describe('generateValue', () => {
     const result = generateValue(field({ type: 'text', label: 'testimonial' }));
     expect(result).toBeNull();
   });
+
+  it('respects min/max for number fields', () => {
+    const result = generateValue(field({ type: 'number', min: '5', max: '5' }));
+    expect(result).toBe('5');
+  });
+
+  it('truncates text values to maxLength', () => {
+    const result = generateValue(field({ type: 'email', label: 'Email', maxLength: 5 }));
+    expect(typeof result).toBe('string');
+    expect((result as string).length).toBeLessThanOrEqual(5);
+  });
 });

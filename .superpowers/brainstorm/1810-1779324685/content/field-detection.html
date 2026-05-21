@@ -1,0 +1,83 @@
+<h2>Field Detection & Data Generation</h2>
+<p class="subtitle">How labels are found and how values are chosen</p>
+
+<div style="display:flex;gap:16px;font-size:12px;font-family:sans-serif">
+
+  <!-- Left: label detection -->
+  <div style="flex:1">
+    <h3 style="margin-bottom:8px">Label Detection (priority order)</h3>
+    <p style="color:#888;font-size:11px;margin-bottom:10px">For each input/select/textarea, the first source that yields text wins:</p>
+
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="background:#1a2e1a;border-left:3px solid #57cc99;padding:8px 10px;border-radius:0 4px 4px 0">
+        <div style="color:#57cc99;font-size:10px;margin-bottom:2px">① aria-label / aria-labelledby</div>
+        <div style="color:#888;font-size:10px">Explicit accessibility labels — highest reliability</div>
+      </div>
+      <div style="background:#1a2a2e;border-left:3px solid #57b8cc;padding:8px 10px;border-radius:0 4px 4px 0">
+        <div style="color:#57b8cc;font-size:10px;margin-bottom:2px">② &lt;label for="id"&gt; association</div>
+        <div style="color:#888;font-size:10px">Standard HTML label linkage via for/id</div>
+      </div>
+      <div style="background:#1e2a1a;border-left:3px solid #99cc57;padding:8px 10px;border-radius:0 4px 4px 0">
+        <div style="color:#99cc57;font-size:10px;margin-bottom:2px">③ Wrapping &lt;label&gt; parent</div>
+        <div style="color:#888;font-size:10px">Input nested inside its own label element</div>
+      </div>
+      <div style="background:#2a1a1a;border-left:3px solid #cc8857;padding:8px 10px;border-radius:0 4px 4px 0">
+        <div style="color:#cc8857;font-size:10px;margin-bottom:2px">④ Preceding sibling text / &lt;p&gt; / &lt;span&gt;</div>
+        <div style="color:#888;font-size:10px">Non-standard label placed before the field in DOM</div>
+      </div>
+      <div style="background:#2a1a2a;border-left:3px solid #cc57b8;padding:8px 10px;border-radius:0 4px 4px 0">
+        <div style="color:#cc57b8;font-size:10px;margin-bottom:2px">⑤ placeholder attribute</div>
+        <div style="color:#888;font-size:10px">Fallback when no visible label exists</div>
+      </div>
+      <div style="background:#1e1e1e;border-left:3px solid #555;padding:8px 10px;border-radius:0 4px 4px 0">
+        <div style="color:#888;font-size:10px;margin-bottom:2px">⑥ name / id attribute</div>
+        <div style="color:#888;font-size:10px">Last resort — often camelCase/snake_case, normalized</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: data generation -->
+  <div style="flex:1">
+    <h3 style="margin-bottom:8px">Data Generation Pipeline</h3>
+
+    <div style="background:#1e1e2e;border:1px solid #3a3a5a;border-radius:6px;padding:10px;margin-bottom:10px;font-size:11px">
+      <div style="color:#9d9aff;margin-bottom:6px;font-size:10px">STEP 1 — FIELD TYPE HANDLING</div>
+      <div style="color:#888;margin-bottom:3px"><span style="color:#ccc">select</span> → pick 2nd non-blank option</div>
+      <div style="color:#888;margin-bottom:3px"><span style="color:#ccc">checkbox</span> → check it</div>
+      <div style="color:#888;margin-bottom:3px"><span style="color:#ccc">radio group</span> → select first option</div>
+      <div style="color:#888;margin-bottom:3px"><span style="color:#ccc">date</span> → random past date</div>
+      <div style="color:#888;margin-bottom:3px"><span style="color:#ccc">number</span> → random within min/max</div>
+      <div style="color:#888"><span style="color:#ccc">file</span> → skip (can't fill programmatically)</div>
+    </div>
+
+    <div style="background:#1a2e1a;border:1px solid #2d6a4f;border-radius:6px;padding:10px;margin-bottom:10px;font-size:11px">
+      <div style="color:#57cc99;margin-bottom:6px;font-size:10px">STEP 2 — RULES ENGINE (local, instant)</div>
+      <div style="color:#888;margin-bottom:2px">Normalized label matched against ~40 patterns:</div>
+      <div style="color:#ccc;margin-top:4px">"email" → faker.internet.email()</div>
+      <div style="color:#ccc">"first name" → faker.person.firstName()</div>
+      <div style="color:#ccc">"phone / mobile / tel" → faker.phone.number()</div>
+      <div style="color:#ccc">"address / street" → faker.location.streetAddress()</div>
+      <div style="color:#ccc">"message / comment / note" → faker.lorem.paragraph()</div>
+      <div style="color:#ccc">"password" → "TestPassword123!"</div>
+      <div style="color:#555;margin-top:4px;font-size:10px">+ ~35 more patterns</div>
+    </div>
+
+    <div style="background:#2e1a1a;border:1px solid #6a2d2d;border-radius:6px;padding:10px;font-size:11px">
+      <div style="color:#cc5757;margin-bottom:6px;font-size:10px">STEP 3 — CLAUDE HAIKU FALLBACK (unmatched fields only)</div>
+      <div style="color:#888;margin-bottom:4px">Batches all unmatched labels into one API call:</div>
+      <div style="background:#1a1010;border-radius:4px;padding:6px;color:#ccc;font-size:10px;font-family:monospace">
+        Fill these form fields with realistic<br>
+        fake data. Return JSON only.<br><br>
+        Fields: ["testimonial",<br>
+        &nbsp;&nbsp;"reason for selling goods"]
+      </div>
+      <div style="color:#888;margin-top:6px;font-size:10px">Response cached in chrome.storage.local by label text to avoid repeat API calls.</div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:14px;background:#1e1e2e;border:1px solid #3a3a5a;border-radius:6px;padding:10px;font-size:11px;font-family:sans-serif">
+  <div style="color:#9d9aff;margin-bottom:4px">React / Vue compatibility</div>
+  <div style="color:#888">After setting <code style="color:#ccc">element.value</code>, the content script dispatches synthetic <code style="color:#ccc">input</code> and <code style="color:#ccc">change</code> events so framework-managed fields (React controlled inputs, Vue v-model) properly update their internal state.</div>
+</div>

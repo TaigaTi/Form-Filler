@@ -1,0 +1,73 @@
+<h2>How should the form filler be triggered?</h2>
+<p class="subtitle">Choose how users invoke the extension on a page with a form</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="toolbar-popup" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a1a2e;padding:12px;border-radius:6px;font-family:monospace;font-size:12px">
+      <div style="display:flex;align-items:center;gap:6px;background:#2d2d44;padding:6px 10px;border-radius:4px;color:#ccc">
+        <div style="width:16px;height:16px;background:#6c63ff;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:bold">F</div>
+        <span style="flex:1;color:#888">https://example.com/checkout</span>
+        <div style="display:flex;gap:4px">
+          <div style="width:18px;height:18px;background:#4a4a6a;border-radius:3px"></div>
+          <div style="width:18px;height:18px;background:#6c63ff;border-radius:3px;box-shadow:0 0 0 2px #9d9aff"></div>
+        </div>
+      </div>
+      <div style="background:#2d2d44;border:1px solid #4a4a6a;border-radius:6px;padding:10px;margin-top:6px;width:180px;margin-left:auto">
+        <div style="font-size:11px;color:#9d9aff;font-weight:bold;margin-bottom:6px">Form Filler</div>
+        <div style="background:#6c63ff;color:#fff;text-align:center;padding:5px;border-radius:4px;font-size:11px;cursor:pointer">Fill All Fields</div>
+        <div style="border-top:1px solid #3a3a5a;margin-top:6px;padding-top:6px;font-size:10px;color:#888">Profile: Default User</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Toolbar Popup</h3>
+      <p>Click the extension icon in the toolbar to open a small popup. Press "Fill All Fields" to trigger. Optionally switch profiles or settings here.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="keyboard" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a1a2e;padding:12px;border-radius:6px;text-align:center">
+      <div style="display:inline-flex;gap:6px;align-items:center;margin-top:8px">
+        <div style="background:#2d2d44;border:1px solid #4a4a6a;border-radius:4px;padding:5px 10px;color:#ccc;font-family:monospace;font-size:13px;box-shadow:0 2px 0 #1a1a2e">Ctrl</div>
+        <span style="color:#666">+</span>
+        <div style="background:#2d2d44;border:1px solid #4a4a6a;border-radius:4px;padding:5px 10px;color:#ccc;font-family:monospace;font-size:13px;box-shadow:0 2px 0 #1a1a2e">Shift</div>
+        <span style="color:#666">+</span>
+        <div style="background:#6c63ff;border:1px solid #9d9aff;border-radius:4px;padding:5px 10px;color:#fff;font-family:monospace;font-size:13px;box-shadow:0 2px 0 #3a3a8a">F</div>
+      </div>
+      <div style="margin-top:10px;color:#9d9aff;font-size:11px">→ Fills all detected form fields instantly</div>
+    </div>
+    <div class="card-body">
+      <h3>B — Keyboard Shortcut</h3>
+      <p>Press a global hotkey (e.g. Ctrl+Shift+F) to fill the form instantly with no UI. Maximum speed for repeated testing.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="both" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a1a2e;padding:12px;border-radius:6px;font-family:monospace;font-size:11px">
+      <div style="display:flex;gap:8px">
+        <div style="flex:1;background:#2d2d44;border-radius:4px;padding:8px">
+          <div style="color:#9d9aff;font-weight:bold;margin-bottom:4px">Quick fill</div>
+          <div style="display:inline-flex;gap:3px;align-items:center">
+            <div style="background:#1a1a2e;border:1px solid #3a3a5a;border-radius:3px;padding:2px 5px;color:#ccc">Ctrl</div>
+            <span style="color:#555">+</span>
+            <div style="background:#1a1a2e;border:1px solid #3a3a5a;border-radius:3px;padding:2px 5px;color:#ccc">⇧</div>
+            <span style="color:#555">+</span>
+            <div style="background:#6c63ff;border-radius:3px;padding:2px 5px;color:#fff">F</div>
+          </div>
+          <div style="color:#888;font-size:10px;margin-top:4px">Fills immediately</div>
+        </div>
+        <div style="flex:1;background:#2d2d44;border-radius:4px;padding:8px">
+          <div style="color:#9d9aff;font-weight:bold;margin-bottom:4px">Popup</div>
+          <div style="background:#1a1a2e;border-radius:3px;padding:4px;color:#888;font-size:10px">Switch profiles</div>
+          <div style="background:#1a1a2e;border-radius:3px;padding:4px;color:#888;font-size:10px;margin-top:2px">Configure AI key</div>
+          <div style="background:#6c63ff;border-radius:3px;padding:4px;color:#fff;font-size:10px;margin-top:2px;text-align:center">Fill Fields</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Both (Recommended)</h3>
+      <p>Hotkey for instant filling during rapid testing. Popup for accessing settings, switching user profiles, or filling selectively. Best of both worlds.</p>
+    </div>
+  </div>
+
+</div>
