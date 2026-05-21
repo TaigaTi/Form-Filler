@@ -64,8 +64,9 @@ async function getAiValues(
 
     const toCache: Record<string, string> = {};
     for (const [label, value] of Object.entries(aiMap)) {
-      result[label] = value;
-      toCache[`ai_cache_${label}`] = value;
+      const strValue = String(value);
+      result[label] = strValue;
+      toCache[`ai_cache_${label}`] = strValue;
     }
     await chrome.storage.local.set(toCache);
   } catch (e) {
@@ -77,9 +78,11 @@ async function getAiValues(
 
 async function runFill(tabId: number): Promise<FillResult> {
   // 1. Extract fields from active page
-  const { fields } = (await chrome.tabs.sendMessage(tabId, {
+  const response = await chrome.tabs.sendMessage(tabId, {
     type: 'EXTRACT_FIELDS',
-  })) as ExtractFieldsResponse;
+  }) as ExtractFieldsResponse | undefined;
+  if (!response?.fields) throw new Error('Failed to extract fields from page');
+  const { fields } = response;
 
   const instructions: FillInstruction[] = [];
   const aiNeeded: FieldMeta[] = [];
@@ -151,6 +154,7 @@ chrome.runtime.onMessage.addListener(
             const result = await runFill(tab.id);
             sendResponse({ type: 'FILL_COMPLETE', result });
           } catch (e) {
+            console.error('[FormFiller] runFill error:', e);
             sendResponse({ type: 'FILL_ERROR', error: String(e) });
           }
           break;
@@ -172,6 +176,10 @@ chrome.runtime.onMessage.addListener(
           sendResponse({ type: 'SETTINGS', settings: await getSettings() });
           break;
         }
+
+        default:
+          sendResponse({});
+          break;
       }
     })();
     return true; // keep channel open for async response
