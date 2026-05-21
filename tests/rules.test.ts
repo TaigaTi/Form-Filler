@@ -68,6 +68,16 @@ describe('matchRule', () => {
     expect(matchRule('Confirm Password')).toBe('TestPassword123!');
   });
 
+  it('matches "telephone number" to a non-empty string', () => {
+    expect(matchRule('telephone number')).not.toBeNull();
+  });
+
+  it('matches "national id number" to a numeric string', () => {
+    const result = matchRule('national id number');
+    expect(result).not.toBeNull();
+    expect(result).toMatch(/^\d+$/);
+  });
+
   it('returns null for an unrecognised label', () => {
     expect(matchRule('testimonial')).toBeNull();
   });

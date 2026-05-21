@@ -32,7 +32,7 @@ const RULES: Rule[] = [
     generate: () => faker.internet.email(),
   },
   {
-    patterns: [/\bphone\b/, /\bmobile\b/, /\btel\b/, /\bcell\b/, /\bcontact[\s\-_]?number\b/],
+    patterns: [/\bphone\b/, /\btelephone\b/, /\bmobile\b/, /\btel\b/, /\bcell\b/, /\bcontact[\s\-_]?number\b/],
     generate: () => faker.phone.number(),
   },
   {
@@ -142,6 +142,10 @@ const RULES: Rule[] = [
   {
     patterns: [/\bvoucher\b/, /\bpromo[\s\-_]?code\b/, /\bdiscount[\s\-_]?code\b/, /\bcoupon\b/],
     generate: () => faker.string.alphanumeric(8).toUpperCase(),
+  },
+  {
+    patterns: [/\bnational[\s\-_]?id\b/, /\bnid\b/, /\bid[\s\-_]?number\b/, /\bssn\b/, /\bsocial[\s\-_]?security\b/, /\bpassport\b/],
+    generate: () => faker.string.numeric(9),
   },
   {
     patterns: [/\bsearch\b/, /\bquery\b/, /\bkeyword\b/],
