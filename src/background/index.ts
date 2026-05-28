@@ -1,4 +1,5 @@
 import { generateValue } from '../shared/valueGenerator';
+import { isConfirmationLabel, normalizeLabel } from '../shared/rules';
 import { pollForFields } from './poll';
 import {
   ExtractFieldsResponse,
@@ -128,11 +129,24 @@ async function runFill(tabId: number): Promise<FillResult> {
   // resolve to parts of the same generated date.
   const dateGroupCache = new Map<string, Date>();
 
+  // Most recent email value generated this fill, so "confirm email" fields can
+  // reuse it instead of generating a fresh, mismatched address.
+  let lastEmail: string | null = null;
+  const isEmailField = (f: FieldMeta): boolean =>
+    f.type === 'email' || /\bemail\b/.test(normalizeLabel(f.label));
+
   // 2. Generate values — generateValue handles pattern validation internally
   for (const field of fields) {
+    // Reuse the prior email for a "confirm email" field rather than regenerating
+    if (isEmailField(field) && isConfirmationLabel(field.label) && lastEmail !== null) {
+      instructions.push({ fieldId: field.id, value: lastEmail });
+      continue;
+    }
+
     const value = generateValue(field, dateGroupCache);
     if (value !== null) {
       instructions.push({ fieldId: field.id, value });
+      if (typeof value === 'string' && isEmailField(field)) lastEmail = value;
     } else {
       aiNeeded.push(field);
     }

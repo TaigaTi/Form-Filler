@@ -9,6 +9,16 @@ export function normalizeLabel(label: string): string {
     .trim();
 }
 
+/**
+ * True when a label reads like a "confirm/re-enter" field (e.g. "Confirm Email",
+ * "Re-enter your email"). Used to reuse the value of the field being confirmed
+ * instead of generating a fresh, mismatched one.
+ */
+export function isConfirmationLabel(label: string): boolean {
+  const n = normalizeLabel(label);
+  return /\b(confirm|confirmation|re ?enter|re ?type|repeat|verify)\b/.test(n);
+}
+
 interface Rule {
   patterns: RegExp[];
   generate: () => string;

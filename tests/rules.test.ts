@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { matchRule, normalizeLabel } from '../src/shared/rules';
+import { matchRule, normalizeLabel, isConfirmationLabel } from '../src/shared/rules';
 
 describe('normalizeLabel', () => {
   it('lowercases text', () => {
@@ -138,5 +138,29 @@ describe('matchRule', () => {
     const result = matchRule('bio');
     expect(result).not.toBeNull();
     expect(result!.length).toBeGreaterThan(10);
+  });
+});
+
+describe('isConfirmationLabel', () => {
+  it.each([
+    'Confirm Email',
+    'Confirm Email Address',
+    'Re-enter Email',
+    'Re-enter your email address',
+    'Retype Email',
+    'Repeat Email',
+    'Verify Email',
+    'Email Confirmation',
+  ])('returns true for "%s"', (label) => {
+    expect(isConfirmationLabel(label)).toBe(true);
+  });
+
+  it.each([
+    'Email',
+    'Email Address',
+    'Work Email',
+    'First Name',
+  ])('returns false for "%s"', (label) => {
+    expect(isConfirmationLabel(label)).toBe(false);
   });
 });
