@@ -25,6 +25,13 @@
         "mac": "Command+Shift+F"
       },
       "description": "Fill all form fields on the current page"
+    },
+    "toggle-test-mode": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+X",
+        "mac": "Command+Shift+X"
+      },
+      "description": "Toggle invalid-data test mode on/off"
     }
   }
 }

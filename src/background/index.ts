@@ -278,14 +278,32 @@ async function runFill(tabId: number): Promise<FillResult> {
 
 // Keyboard shortcut handler
 chrome.commands.onCommand.addListener(async (command) => {
-  if (command !== 'fill-form') return;
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id) return;
-  try {
-    await runFill(tab.id);
-  } catch (e) {
-    console.error('[FormFiller] Fill failed:', e);
-    sendToast(tab.id, 'error', 'Fill failed — try reloading the tab');
+  if (command === 'fill-form') {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) return;
+    try {
+      await runFill(tab.id);
+    } catch (e) {
+      console.error('[FormFiller] Fill failed:', e);
+      sendToast(tab.id, 'error', 'Fill failed — try reloading the tab');
+    }
+    return;
+  }
+
+  if (command === 'toggle-test-mode') {
+    const { testValidationMode } = await getSettings();
+    const enabled = !testValidationMode;
+    // Enabling restarts the cycle so the next fill begins at pass 1 (invalid format).
+    await chrome.storage.sync.set(
+      enabled ? { testValidationMode: true, invalidCycleStep: 0 } : { testValidationMode: false }
+    );
+    // Toast confirms the new state — the popup is closed when using a shortcut.
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id) {
+      sendToast(tab.id, 'success',
+        enabled ? '🧪 Invalid mode ON — next fill: invalid format' : 'Invalid mode OFF');
+    }
+    return;
   }
 });
 
