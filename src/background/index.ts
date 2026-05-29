@@ -1,4 +1,10 @@
-import { generateValue, generateGenericText, generateInvalidValue } from '../shared/valueGenerator';
+import {
+  generateValue,
+  generateGenericText,
+  generateInvalidValue,
+  activeViolationKinds,
+  violationLabel,
+} from '../shared/valueGenerator';
 import { isConfirmationLabel, normalizeLabel } from '../shared/rules';
 import { pollForFields } from './poll';
 import {
@@ -125,18 +131,29 @@ async function extractFromTab(tabId: number): Promise<FieldMeta[] | null> {
 
 // Test validation mode: fill every field with data that should FAIL validation,
 // then fire the form's validators so the errors surface. Auto-correction is
-// intentionally NOT registered, so the bad data is left in place. The cycle step
-// advances each fill so successive fills break a different constraint per field.
+// intentionally NOT registered, so the bad data is left in place. Each pass
+// targets ONE violation kind across the whole form (format → below-min → above-max
+// → out-of-range → empty, skipping kinds no field can express). The cycle step
+// advances each fill so successive fills walk the form's active kinds.
 async function runInvalidFill(
   tabId: number,
   fields: FieldMeta[],
   step: number
 ): Promise<FillResult> {
-  sendToast(tabId, 'loading', `Filling with invalid data (pass ${step + 1})…`);
+  // The form-wide cycle. Empty only when every field is a structured type or date
+  // part (which break regardless of kind) — fall back to one nominal pass so the
+  // pass math and labelling stay valid.
+  const activeKinds = activeViolationKinds(fields);
+  const kinds = activeKinds.length > 0 ? activeKinds : (['empty'] as const);
+  const pass = ((step % kinds.length) + kinds.length) % kinds.length;
+  const kind = kinds[pass];
+
+  sendToast(tabId, 'loading',
+    `Filling invalid data — pass ${pass + 1} of ${kinds.length}: ${violationLabel(kind)}…`);
 
   const instructions: FillInstruction[] = [];
   for (const field of fields) {
-    const value = generateInvalidValue(field, step);
+    const value = generateInvalidValue(field, kind);
     if (value !== null) instructions.push({ fieldId: field.id, value });
   }
 
@@ -155,7 +172,8 @@ async function runInvalidFill(
     timestamp: Date.now(),
   };
   await chrome.storage.sync.set({ lastFillResult: result });
-  sendToast(tabId, 'success', `✓ ${result.fieldsFilled} fields filled (invalid mode)`);
+  sendToast(tabId, 'success',
+    `✓ ${result.fieldsFilled} fields filled — ${violationLabel(kind)} (invalid mode)`);
   return result;
 }
 

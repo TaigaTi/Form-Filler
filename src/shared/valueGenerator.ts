@@ -156,16 +156,35 @@ export function generateGenericText(field: FieldMeta): string | null {
 
 // --- Test validation mode: deliberately-invalid values ---------------------
 //
-// Each invalid-mode fill targets ONE constraint per field. The violation kinds
-// below are tried in this fixed order; `generateInvalidValue` picks the Nth one
-// applicable to a field (N = the cycle step), so successive fills walk every
-// field through tooShort → invalidChars → tooLong → outOfRange → empty.
+// Each invalid-mode fill targets ONE violation *kind* across the whole form, so
+// a single pass breaks every applicable field the same way. The orchestrator
+// walks the global order below (skipping kinds no field can express) and passes
+// the targeted kind to `generateInvalidValue` per field. A field that can't
+// express the targeted kind falls back to generic garbage.
 
 export type ViolationKind = 'tooShort' | 'invalidChars' | 'tooLong' | 'outOfRange' | 'empty';
 
+// Format first, then length (short→long), then numeric/date range, then empty.
 const VIOLATION_ORDER: ViolationKind[] = [
-  'tooShort', 'invalidChars', 'tooLong', 'outOfRange', 'empty',
+  'invalidChars', 'tooShort', 'tooLong', 'outOfRange', 'empty',
 ];
+
+// Types whose only invalid state is type-specific (uncheck / skip / deselect) and
+// so don't participate in the format/length/range cycle.
+const STRUCTURED_TYPES = ['checkbox', 'radio', 'select'];
+
+const VIOLATION_LABELS: Record<ViolationKind, string> = {
+  invalidChars: 'invalid format',
+  tooShort: 'below minimum',
+  tooLong: 'above maximum',
+  outOfRange: 'out of range',
+  empty: 'empty',
+};
+
+/** Human-readable name for a violation kind, used to label invalid-fill passes. */
+export function violationLabel(kind: ViolationKind): string {
+  return VIOLATION_LABELS[kind];
+}
 
 /** The violation kinds that can actually be applied to this field, in cycle order. */
 export function applicableViolations(field: FieldMeta): ViolationKind[] {
@@ -189,6 +208,22 @@ export function applicableViolations(field: FieldMeta): ViolationKind[] {
   // Fallback: a field with no other way to be invalid (e.g. an optional date with
   // no bounds) can at least be emptied.
   return kinds.length > 0 ? kinds : ['empty'];
+}
+
+/**
+ * The form-wide invalid-fill cycle: the violation kinds (in global order) that at
+ * least one field can express. Structured types (checkbox/radio/select) and
+ * date-triplet parts are excluded — their single invalid state isn't one of the
+ * cycle kinds, so they don't add or gate a pass. The orchestrator walks this list
+ * one kind per fill, so empty passes are never wasted.
+ */
+export function activeViolationKinds(fields: FieldMeta[]): ViolationKind[] {
+  const expressible = new Set<ViolationKind>();
+  for (const field of fields) {
+    if (STRUCTURED_TYPES.includes(field.type) || field.datePart) continue;
+    for (const kind of applicableViolations(field)) expressible.add(kind);
+  }
+  return VIOLATION_ORDER.filter((k) => expressible.has(k));
 }
 
 function outOfRangeDate(bound: string, dir: 'before' | 'after', isDatetime: boolean): string {
@@ -248,13 +283,16 @@ function violate(field: FieldMeta, kind: ViolationKind): string | boolean | null
 }
 
 /**
- * Produces a value that should FAIL the field's validation. `step` selects which
- * constraint to break (cycled across fills). Returns null to skip the field
- * (radios — leaving the group unselected is itself an invalid/required test).
+ * Produces a value that should FAIL the field's validation. `kind` is the
+ * violation the current pass targets (chosen form-wide by the orchestrator). If
+ * the field can express that kind it does so; otherwise it falls back to generic
+ * garbage so the field still visibly fails. Structured types and date-triplet
+ * parts have a single invalid state and ignore the kind. Returns null to skip the
+ * field (radios — leaving the group unselected is itself an invalid/required test).
  */
 export function generateInvalidValue(
   field: FieldMeta,
-  step = 0
+  kind: ViolationKind
 ): string | boolean | null {
   // Date triplet member — an out-of-range part makes the whole date invalid.
   if (field.datePart) {
@@ -268,11 +306,10 @@ export function generateInvalidValue(
       return null; // skip → leaves the group unselected
     case 'select':
       return ''; // deselect → fails required-choice
-    default: {
-      const kinds = applicableViolations(field);
-      const kind = kinds[((step % kinds.length) + kinds.length) % kinds.length];
-      return violate(field, kind);
-    }
+    default:
+      return applicableViolations(field).includes(kind)
+        ? violate(field, kind)
+        : '!!!INVALID!!!';
   }
 }
 

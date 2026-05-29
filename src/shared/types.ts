@@ -40,8 +40,9 @@ export interface StoredSettings {
   lastFillResult?: FillResult;
   // When on, fills with deliberately-invalid data to exercise form validation.
   testValidationMode?: boolean;
-  // Which violation step the invalid-data cycle is on; incremented after each
-  // invalid-mode fill so repeated fills walk through every constraint per field.
+  // Which step the form-wide invalid-data cycle is on; incremented after each
+  // invalid-mode fill so repeated fills walk the form's active violation kinds
+  // (one kind per pass: format → below-min → above-max → out-of-range → empty).
   invalidCycleStep?: number;
 }
 
