@@ -31,12 +31,10 @@ export interface FillInstruction {
 export interface FillResult {
   fieldsFilled: number;
   fieldsSkipped: number;
-  aiFieldCount: number;
   timestamp: number;
 }
 
 export interface StoredSettings {
-  claudeApiKey: string;
   lastFillResult?: FillResult;
   // When on, fills with deliberately-invalid data to exercise form validation.
   testValidationMode?: boolean;
@@ -66,9 +64,7 @@ export type MessageFromContent =
 // Messages sent TO background (from popup)
 export type MessageToBackground =
   | { type: 'FILL_REQUEST' }
-  | { type: 'SAVE_API_KEY'; key: string }
   | { type: 'GET_SETTINGS' }
-  | { type: 'CLEAR_AI_CACHE' }
   | { type: 'SET_TEST_MODE'; enabled: boolean };
 
 // Messages sent FROM background to popup

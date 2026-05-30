@@ -92,8 +92,43 @@ const RULES: Rule[] = [
     generate: () => faker.company.name(),
   },
   {
-    patterns: [/\bjob[\s\-_]?title\b/, /\bposition\b/, /\brole\b/, /\boccupation\b/, /\bdesignation\b/],
+    patterns: [/\bjob[\s\-_]?title\b/, /\bposition\b/, /\brole\b/, /\boccupation\b/, /\bdesignation\b/, /\bprofession\b/],
     generate: () => faker.person.jobTitle(),
+  },
+  {
+    // "Title"/"Salutation" — a personal prefix (Mr, Mrs, …). Comes after the job
+    // rule so "job title" still maps to a job title.
+    patterns: [/\btitle\b/, /\bsalutation\b/, /\bprefix\b/],
+    generate: () => faker.person.prefix(),
+  },
+  {
+    patterns: [/\bmarital\b/, /\bmarriage[\s\-_]?status\b/],
+    generate: () => faker.helpers.arrayElement(['Single', 'Married', 'Divorced', 'Widowed']),
+  },
+  {
+    patterns: [/\brelationship\b/, /\brelation\b/, /\bnext[\s\-_]?of[\s\-_]?kin\b/],
+    generate: () => faker.helpers.arrayElement(['Parent', 'Sibling', 'Spouse', 'Guardian', 'Friend']),
+  },
+  {
+    patterns: [/\breligion\b/, /\bfaith\b/, /\bdenomination\b/],
+    generate: () => faker.helpers.arrayElement(['Christianity', 'Islam', 'Hinduism', 'Judaism', 'None']),
+  },
+  {
+    patterns: [/\bcolou?r\b/],
+    generate: () => faker.color.human(),
+  },
+  {
+    patterns: [/\b(vehicle|car)?[\s\-_]?make\b/, /\bmanufacturer\b/],
+    generate: () => faker.vehicle.manufacturer(),
+  },
+  {
+    patterns: [/\bmodel\b/],
+    generate: () => faker.vehicle.model(),
+  },
+  {
+    // "Number of dependants", "How many children" — a small count.
+    patterns: [/\bnumber[\s\-_]?of\b/, /\bhow[\s\-_]?many\b/, /\bno\.?[\s\-_]?of\b/],
+    generate: () => String(faker.number.int({ min: 1, max: 9 })),
   },
   {
     patterns: [/\bwebsite\b/, /\bhomepage\b/, /\bweb[\s\-_]?url\b/, /\bsite[\s\-_]?url\b/],
@@ -203,8 +238,10 @@ const RULES: Rule[] = [
     // Generic "name(s)" — must be last to avoid shadowing specific name patterns
     // above. Matches the plural too ("other names", "given names") so name-like
     // fields get a person name rather than falling through to lorem filler.
+    // first + last (not fullName) so no prefix/suffix period can sneak in, which
+    // would break "letters, hyphens, apostrophes only" validators.
     patterns: [/\bnames?\b/],
-    generate: () => faker.person.fullName(),
+    generate: () => `${faker.person.firstName()} ${faker.person.lastName()}`,
   },
 ];
 

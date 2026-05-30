@@ -90,8 +90,6 @@ function applyMaxLength(value: string, maxLength?: number): string {
 }
 
 const TEXT_LIKE_TYPES = ['text', 'textarea', 'email', 'tel', 'url', 'password', 'search'];
-// Free-prose types that can be padded with filler text to satisfy a minimum length.
-const PROSE_TYPES = ['text', 'textarea', 'search'];
 
 /**
  * Parses a minimum-character requirement out of hint/error text, e.g.
@@ -114,44 +112,59 @@ function effectiveMinChars(field: FieldMeta): number {
   return Math.max(field.minLength ?? 0, parseMinChars(field.hint) ?? 0);
 }
 
-/** Filler prose of at least `minChars`, capped at `maxLength` if given. */
-function loremAtLeast(minChars: number, maxLength?: number): string {
-  let value = faker.lorem.sentence();
+const SHORT_WORDS = { min: 2, max: 5 };
+const LONG_WORDS = { min: 12, max: 24 };
+
+/**
+ * Space-joined filler words of at least `minChars`, capped at `maxLength`. Built
+ * from `faker.lorem.words` (lowercase, no terminal/internal periods) so the value
+ * can never carry a full stop that trips "letters only"-style charset validators
+ * or reads as obvious lorem boilerplate.
+ */
+function fillerAtLeast(
+  minChars: number,
+  spread: { min: number; max: number },
+  maxLength?: number
+): string {
+  let value = faker.lorem.words(spread);
   let guard = 0;
   while (value.length < minChars && guard < 50) {
-    value += ' ' + faker.lorem.sentence();
+    value += ' ' + faker.lorem.words(spread);
     guard++;
   }
   return applyMaxLength(value, maxLength);
 }
 
+// Label/hint keywords that signal a long, free-prose answer is expected.
+const LONG_FORM_RE =
+  /\b(describe|description|explain|reason|details?|comment|why|tell us|summary|background|elaborate)\b/;
+
+function isLongFormText(field: FieldMeta): boolean {
+  if (field.type === 'textarea') return true;
+  return LONG_FORM_RE.test(normalizeLabel(`${field.label} ${field.hint ?? ''}`));
+}
+
 /**
- * Last-resort value for a free-text field whose label matched no rule and that AI
- * didn't fill — so the field isn't left blank. Returns null for structured types
- * (select/radio/checkbox) and pattern-constrained fields, where arbitrary text
- * would be invalid; those are better left blank than filled wrongly.
+ * Last-resort value for a free-text field whose label matched no rule — so the
+ * field isn't left blank. Returns null for structured types (select/radio/checkbox)
+ * and pattern-constrained fields, where arbitrary text would be invalid; those are
+ * better left blank than filled wrongly. Free text is built from words only (never
+ * full stops); long-form prompts get a longer phrase.
  */
 export function generateGenericText(field: FieldMeta): string | null {
   if (!TEXT_LIKE_TYPES.includes(field.type)) return null;
   if (field.pattern) return null;
 
-  const minChars = effectiveMinChars(field);
-
-  let value: string;
   switch (field.type) {
     case 'email': return applyMaxLength(faker.internet.email(), field.maxLength);
     case 'url': return applyMaxLength(faker.internet.url(), field.maxLength);
     case 'password': return applyMaxLength('TestPassword123!', field.maxLength);
-    // Textareas read as paragraphs; single-line text gets a sentence. Both are far
-    // longer than the old two-word filler, so common "at least N characters" rules pass.
-    case 'textarea': value = faker.lorem.sentences(2); break;
-    default: value = faker.lorem.sentence();
   }
 
-  if (PROSE_TYPES.includes(field.type) && value.length < minChars) {
-    value = loremAtLeast(minChars, field.maxLength);
-  }
-  return applyMaxLength(value, field.maxLength);
+  const longForm = isLongFormText(field);
+  const spread = longForm ? LONG_WORDS : SHORT_WORDS;
+  const minChars = Math.max(effectiveMinChars(field), longForm ? 40 : 0);
+  return fillerAtLeast(minChars, spread, field.maxLength);
 }
 
 // --- Charset-restriction errors --------------------------------------------
@@ -431,10 +444,10 @@ export function generateValue(
       if (!field.pattern) {
         if (candidates[0]) return applyMaxLength(candidates[0], field.maxLength);
         // No label/hint-example match, but a minimum length is stated (e.g. a
-        // "write at least 20 characters" validation error) — fill enough prose to
-        // satisfy it rather than leaving it short. Otherwise defer to AI/generic.
+        // "write at least 20 characters" validation error) — fill enough words to
+        // satisfy it rather than leaving it short. Otherwise defer to generic.
         const minChars = effectiveMinChars(field);
-        if (minChars > 0) return loremAtLeast(minChars, field.maxLength);
+        if (minChars > 0) return fillerAtLeast(minChars, SHORT_WORDS, field.maxLength);
         return null;
       }
 

@@ -18,19 +18,6 @@ function sendToBackground(msg: MessageToBackground): Promise<MessageFromBackgrou
 }
 
 function renderSettings(settings: StoredSettings) {
-  const keyStatus = document.getElementById('key-status')!;
-  const keyInput = document.getElementById('api-key-input') as HTMLInputElement;
-
-  if (settings.claudeApiKey) {
-    keyStatus.textContent = 'Set ✓';
-    keyStatus.className = 'key-status set';
-    keyInput.placeholder = 'sk-ant-••••••••••••';
-  } else {
-    keyStatus.textContent = 'Not set';
-    keyStatus.className = 'key-status unset';
-    keyInput.placeholder = 'sk-ant-...';
-  }
-
   const enabled = settings.testValidationMode === true;
   (document.getElementById('test-mode-toggle') as HTMLInputElement).checked = enabled;
   document.getElementById('test-mode-badge')!.style.display = enabled ? 'block' : 'none';
@@ -47,11 +34,10 @@ function renderLastFill(result: FillResult | undefined) {
     return;
   }
 
-  const { fieldsFilled, aiFieldCount, timestamp } = result;
+  const { fieldsFilled, timestamp } = result;
   const ago = Math.round((Date.now() - timestamp) / 1000);
   const timeStr = ago < 60 ? 'just now' : ago < 3600 ? `${Math.floor(ago / 60)}m ago` : `${Math.floor(ago / 3600)}h ago`;
-  const aiStr = aiFieldCount > 0 ? ` (${aiFieldCount} via AI)` : '';
-  text.textContent = `${fieldsFilled} fields filled${aiStr} — ${timeStr}`;
+  text.textContent = `${fieldsFilled} fields filled — ${timeStr}`;
   text.className = 'status-text ok';
   box.className = 'status-box success';
 }
@@ -102,22 +88,6 @@ async function init() {
   document.getElementById('open-settings')!.addEventListener('click', () => showView('view-settings'));
   document.getElementById('btn-back')!.addEventListener('click', () => showView('view-main'));
 
-  // Save API key
-  document.getElementById('btn-save-key')!.addEventListener('click', async () => {
-    const key = (document.getElementById('api-key-input') as HTMLInputElement).value.trim();
-    try {
-      const res = await sendToBackground({ type: 'SAVE_API_KEY', key });
-      if (res?.type === 'SETTINGS') {
-        renderSettings(res.settings);
-        const feedback = document.getElementById('save-feedback')!;
-        feedback.style.display = 'block';
-        setTimeout(() => (feedback.style.display = 'none'), 2000);
-      }
-    } catch (e) {
-      console.error('[FormFiller] Save API key error:', e);
-    }
-  });
-
   // Toggle test validation mode
   document.getElementById('test-mode-toggle')!.addEventListener('change', async (e) => {
     const enabled = (e.target as HTMLInputElement).checked;
@@ -127,18 +97,6 @@ async function init() {
     } catch (err) {
       console.error('[FormFiller] Set test mode error:', err);
     }
-  });
-
-  // Clear AI cache
-  document.getElementById('btn-clear-cache')!.addEventListener('click', async () => {
-    try {
-      await sendToBackground({ type: 'CLEAR_AI_CACHE' });
-    } catch (e) {
-      console.error('[FormFiller] Clear cache error:', e);
-    }
-    const btn = document.getElementById('btn-clear-cache')!;
-    btn.textContent = '✓ Cache cleared';
-    setTimeout(() => (btn.textContent = '🗑 Clear AI Cache'), 2000);
   });
 }
 

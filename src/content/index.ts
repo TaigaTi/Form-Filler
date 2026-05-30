@@ -85,7 +85,6 @@ export function applyValues(instructions: FillInstruction[]): FillResult {
   return {
     fieldsFilled,
     fieldsSkipped,
-    aiFieldCount: 0,
     timestamp: Date.now(),
   };
 }

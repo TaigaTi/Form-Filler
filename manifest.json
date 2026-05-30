@@ -4,7 +4,6 @@
   "version": "1.0.0",
   "description": "Instantly fill form fields with realistic fake data for testing",
   "permissions": ["activeTab", "scripting", "storage", "tabs"],
-  "host_permissions": ["https://api.anthropic.com/*"],
   "action": {
     "default_popup": "src/popup/index.html"
   },

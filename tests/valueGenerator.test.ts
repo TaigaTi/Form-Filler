@@ -203,6 +203,17 @@ describe('generateGenericText', () => {
     expect((result as string).length).toBeGreaterThan(0);
   });
 
+  it('never includes full stops in the filler text', () => {
+    for (let i = 0; i < 20; i++) {
+      const short = generateGenericText(field({ type: 'text', label: 'Anything' })) as string;
+      const long = generateGenericText(field({ type: 'textarea', label: 'Why are you applying?' })) as string;
+      const padded = generateGenericText(field({ type: 'text', minLength: 60 })) as string;
+      expect(short).not.toContain('.');
+      expect(long).not.toContain('.');
+      expect(padded).not.toContain('.');
+    }
+  });
+
   it('returns an email for an email-typed field', () => {
     expect(generateGenericText(field({ type: 'email' }))).toMatch(/@/);
   });

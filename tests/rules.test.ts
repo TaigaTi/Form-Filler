@@ -162,6 +162,42 @@ describe('matchRule', () => {
     // A person name: letters, spaces, hyphens, apostrophes — no lorem punctuation
     expect(result!).toMatch(/^[A-Za-z'\- ]+$/);
   });
+
+  it('matches a title/salutation field', () => {
+    expect(matchRule('Title')).not.toBeNull();
+    expect(matchRule('Salutation')).not.toBeNull();
+  });
+
+  it('matches marital status to a plausible value', () => {
+    expect(matchRule('Marital status')).toMatch(/Single|Married|Divorced|Widowed/);
+  });
+
+  it('matches relationship to a plausible value', () => {
+    expect(matchRule('Relationship to applicant')).not.toBeNull();
+  });
+
+  it('matches religion to a non-empty value', () => {
+    expect(matchRule('Religion')).not.toBeNull();
+  });
+
+  it('matches colour/color to a colour name', () => {
+    expect(matchRule('Vehicle colour')).not.toBeNull();
+    expect(matchRule('Favourite color')).not.toBeNull();
+  });
+
+  it('matches vehicle make and model', () => {
+    expect(matchRule('Vehicle make')).not.toBeNull();
+    expect(matchRule('Car model')).not.toBeNull();
+  });
+
+  it('matches a "number of" count to a numeric string', () => {
+    expect(matchRule('Number of dependants')).toMatch(/^\d+$/);
+    expect(matchRule('How many children')).toMatch(/^\d+$/);
+  });
+
+  it('matches profession to a job title', () => {
+    expect(matchRule('Profession')).not.toBeNull();
+  });
 });
 
 describe('isConfirmationLabel', () => {
