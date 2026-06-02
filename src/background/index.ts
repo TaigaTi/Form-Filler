@@ -57,9 +57,10 @@ async function extractFromTab(tabId: number): Promise<FieldMeta[] | null> {
 // Test validation mode: fill every field with data that should FAIL validation,
 // then fire the form's validators so the errors surface. Auto-correction is
 // intentionally NOT registered, so the bad data is left in place. Each pass
-// targets ONE violation kind across the whole form (format → below-min → above-max
-// → out-of-range → empty, skipping kinds no field can express). The cycle step
-// advances each fill so successive fills walk the form's active kinds.
+// targets ONE violation kind across the whole form (format → below-min length →
+// above-max length → below-min value → above-max value → empty, skipping kinds no
+// field can express). The cycle step advances each fill so successive fills walk
+// the form's active kinds.
 async function runInvalidFill(
   tabId: number,
   fields: FieldMeta[],

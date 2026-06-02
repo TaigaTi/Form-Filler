@@ -113,6 +113,63 @@ function effectiveMinChars(field: FieldMeta): number {
   return Math.max(field.minLength ?? 0, parseMinChars(field.hint) ?? 0);
 }
 
+/**
+ * Parses a numeric value range out of hint/error text — the numeric analogue of
+ * `parseMinChars`. Many forms enforce a range ("you must be 18 or older",
+ * "between 1 and 100") in JS only, with no HTML `min`/`max`, so the bound is only
+ * discoverable from the text. Returns `{ min?, max? }`, or null when no recognizable
+ * numeric bound is stated. A number immediately followed by characters/chars/letters
+ * is treated as a length statement (parseMinChars' job) and ignored here.
+ */
+export function parseNumericBounds(
+  text: string | undefined
+): { min?: number; max?: number } | null {
+  if (!text) return null;
+  // A complete number: the trailing `(?![\d.])` stops `\d+` from backtracking to a
+  // partial match (so "20 characters" can't sneak through as "2"). `notLen` then
+  // rejects the whole match when a length word follows.
+  const NUM = '(-?\\d+(?:\\.\\d+)?)(?![\\d.])';
+  const notLen = '(?!\\s*(?:characters|chars|letters))';
+  const bounds: { min?: number; max?: number } = {};
+
+  // "between X and Y" — sets both ends at once. Leading `\b` on every keyword group
+  // keeps "min."/"max" from matching mid-word (e.g. the "min" inside "admin.").
+  const range = text.match(
+    new RegExp(`\\bbetween\\s+${NUM}${notLen}\\s+and\\s+${NUM}${notLen}`, 'i')
+  );
+  if (range) return { min: parseFloat(range[1]), max: parseFloat(range[2]) };
+
+  const min =
+    text.match(
+      new RegExp(`\\b(?:at least|minimum(?:\\s+of)?|min\\.?|no fewer than|no less than)\\s+${NUM}${notLen}`, 'i')
+    ) ?? text.match(new RegExp(`${NUM}\\s+or\\s+(?:older|more|greater|above|over)\\b`, 'i'));
+  if (min) bounds.min = parseFloat(min[1]);
+
+  const max =
+    text.match(
+      new RegExp(`\\b(?:no more than|at most|maximum(?:\\s+of)?|max\\.?|up to|not (?:to )?exceed(?:ing)?)\\s+${NUM}${notLen}`, 'i')
+    ) ?? text.match(new RegExp(`${NUM}\\s+or\\s+(?:younger|less|fewer|below|under)\\b`, 'i'));
+  if (max) bounds.max = parseFloat(max[1]);
+
+  return bounds.min !== undefined || bounds.max !== undefined ? bounds : null;
+}
+
+/**
+ * Effective numeric bound for a `type=number` field, combining the HTML `min`/`max`
+ * attribute with any hint-stated bound (`parseNumericBounds`). For `min` the binding
+ * constraint is the *larger* of the two sources; for `max`, the *smaller* — so a value
+ * one step outside it is guaranteed to violate whichever source the form enforces.
+ * Returns undefined when neither source states that end. Number-only: date `min`/`max`
+ * are ISO strings, not parseable here, and date hints aren't parsed.
+ */
+function numericBound(field: FieldMeta, end: 'min' | 'max'): number | undefined {
+  const attr = field[end] !== undefined ? parseFloat(field[end] as string) : undefined;
+  const hint = parseNumericBounds(field.hint)?.[end];
+  const vals = [attr, hint].filter((v): v is number => v !== undefined && !isNaN(v));
+  if (vals.length === 0) return undefined;
+  return end === 'min' ? Math.max(...vals) : Math.min(...vals);
+}
+
 const SHORT_WORDS = { min: 2, max: 5 };
 const LONG_WORDS = { min: 12, max: 24 };
 
@@ -219,14 +276,16 @@ export function sanitizeToAllowedChars(value: string, text: string | undefined):
 // Each invalid-mode fill targets ONE violation *kind* across the whole form, so
 // a single pass breaks every applicable field the same way. The orchestrator
 // walks the global order below (skipping kinds no field can express) and passes
-// the targeted kind to `generateInvalidValue` per field. A field that can't
-// express the targeted kind falls back to generic garbage.
+// the targeted kind to `generateInvalidValue` per field. A field that can't express
+// the targeted kind falls back to generic garbage — except number inputs, which skip
+// the pass (their inputs silently drop non-numeric junk).
 
-export type ViolationKind = 'tooShort' | 'invalidChars' | 'tooLong' | 'outOfRange' | 'empty';
+export type ViolationKind =
+  | 'tooShort' | 'invalidChars' | 'tooLong' | 'belowMin' | 'aboveMax' | 'empty';
 
-// Format first, then length (short→long), then numeric/date range, then empty.
+// Format first, then length (short→long), then value range (below→above), then empty.
 const VIOLATION_ORDER: ViolationKind[] = [
-  'invalidChars', 'tooShort', 'tooLong', 'outOfRange', 'empty',
+  'invalidChars', 'tooShort', 'tooLong', 'belowMin', 'aboveMax', 'empty',
 ];
 
 // Types whose only invalid state is type-specific (uncheck / skip / deselect) and
@@ -235,9 +294,10 @@ const STRUCTURED_TYPES = ['checkbox', 'radio', 'select'];
 
 const VIOLATION_LABELS: Record<ViolationKind, string> = {
   invalidChars: 'invalid format',
-  tooShort: 'below minimum',
-  tooLong: 'above maximum',
-  outOfRange: 'out of range',
+  tooShort: 'below minimum length',
+  tooLong: 'above maximum length',
+  belowMin: 'below minimum value',
+  aboveMax: 'above maximum value',
   empty: 'empty',
 };
 
@@ -249,18 +309,27 @@ export function violationLabel(kind: ViolationKind): string {
 /** The violation kinds that can actually be applied to this field, in cycle order. */
 export function applicableViolations(field: FieldMeta): ViolationKind[] {
   const has: Record<ViolationKind, boolean> = {
-    // A minimum length to undercut
-    tooShort: !!field.minLength && field.minLength > 1,
+    // A minimum length to undercut — HTML minlength or a hint-stated minimum
+    // ("write at least 20 characters"), matching valid-fill's effectiveMinChars.
+    // Length only lands on text-like inputs; minlength/maxlength are ignored by
+    // type=number (and the alpha undercut would be dropped anyway).
+    tooShort: TEXT_LIKE_TYPES.includes(field.type) && effectiveMinChars(field) > 1,
     // Junk content: any text-like field (so plain text gets visible garbage rather
-    // than being left blank), plus number and pattern-constrained fields.
+    // than being left blank) plus pattern-constrained fields. Number inputs are
+    // excluded — non-numeric junk is silently dropped by type=number, so it never
+    // lands; a bare number's only real invalid states are belowMin/aboveMax/empty.
     invalidChars:
-      TEXT_LIKE_TYPES.includes(field.type) || field.type === 'number' || !!field.pattern,
-    // A maximum length to exceed
-    tooLong: !!field.maxLength,
-    // A numeric/date bound to step outside of
-    outOfRange:
-      (field.type === 'number' || field.type === 'date' || field.type === 'datetime-local') &&
-      (field.min !== undefined || field.max !== undefined),
+      TEXT_LIKE_TYPES.includes(field.type) || !!field.pattern,
+    // A maximum length to exceed (text-like only, same reasoning as tooShort)
+    tooLong: TEXT_LIKE_TYPES.includes(field.type) && !!field.maxLength,
+    // A lower value bound to undercut (number: HTML min or hint-stated min; date: HTML min)
+    belowMin:
+      (field.type === 'number' && numericBound(field, 'min') !== undefined) ||
+      ((field.type === 'date' || field.type === 'datetime-local') && field.min !== undefined),
+    // An upper value bound to exceed (number: HTML max or hint-stated max; date: HTML max)
+    aboveMax:
+      (field.type === 'number' && numericBound(field, 'max') !== undefined) ||
+      ((field.type === 'date' || field.type === 'datetime-local') && field.max !== undefined),
     // Emptying only fails validation on a required field — so don't blank others.
     empty: !!field.required,
   };
@@ -299,34 +368,35 @@ function violate(field: FieldMeta, kind: ViolationKind): string | boolean | null
       return '';
 
     case 'tooShort':
-      // One char short of the minimum (minLength > 1 is guaranteed by applicability)
-      return faker.string.alpha({ length: (field.minLength ?? 2) - 1 });
+      // One char short of the effective minimum (effectiveMinChars > 1 is guaranteed
+      // by applicability, so the length is always >= 1).
+      return faker.string.alpha({ length: effectiveMinChars(field) - 1 });
 
     case 'tooLong':
       return faker.string.alpha({ length: (field.maxLength ?? 10) + 5 });
 
-    case 'outOfRange': {
+    case 'belowMin': {
       if (field.type === 'number') {
-        if (field.min !== undefined) {
-          const min = parseFloat(field.min);
-          if (!isNaN(min)) return String(min - 1);
-        }
-        if (field.max !== undefined) {
-          const max = parseFloat(field.max);
-          if (!isNaN(max)) return String(max + 1);
-        }
-        return '-999999';
+        const min = numericBound(field, 'min');
+        return min !== undefined ? String(min - 1) : '-999999';
       }
       const isDatetime = field.type === 'datetime-local';
-      if (field.min !== undefined) return outOfRangeDate(field.min, 'before', isDatetime);
-      if (field.max !== undefined) return outOfRangeDate(field.max, 'after', isDatetime);
-      return '';
+      return field.min !== undefined ? outOfRangeDate(field.min, 'before', isDatetime) : '';
+    }
+
+    case 'aboveMax': {
+      if (field.type === 'number') {
+        const max = numericBound(field, 'max');
+        return max !== undefined ? String(max + 1) : '999999';
+      }
+      const isDatetime = field.type === 'datetime-local';
+      return field.max !== undefined ? outOfRangeDate(field.max, 'after', isDatetime) : '';
     }
 
     case 'invalidChars': {
       if (field.type === 'email') return 'not-an-email';
       if (field.type === 'url') return 'not a url';
-      if (field.type === 'tel' || field.type === 'number') return 'abc';
+      if (field.type === 'tel') return 'abc';
       // Pattern field — make sure the junk actually fails the regex; if it somehow
       // matches, leave the field empty rather than emit an accidentally-valid value.
       if (field.pattern) {
@@ -367,9 +437,12 @@ export function generateInvalidValue(
     case 'select':
       return ''; // deselect → fails required-choice
     default:
-      return applicableViolations(field).includes(kind)
-        ? violate(field, kind)
-        : '!!!INVALID!!!';
+      if (applicableViolations(field).includes(kind)) return violate(field, kind);
+      // Generic garbage only "works" where it lands. A type=number input silently
+      // drops non-numeric junk, so a number skips (null) any pass it can't express
+      // rather than pretending to participate with a value that never appears.
+      if (field.type === 'number') return null;
+      return '!!!INVALID!!!';
   }
 }
 

@@ -23,20 +23,53 @@ describe('generateInvalidValue — expresses the targeted kind', () => {
     expect(v.length).toBeLessThan(6);
   });
 
+  it('undercuts a hint-stated minimum length that has no minlength attribute', () => {
+    const f = field({ type: 'textarea', hint: 'Please write at least 20 characters' });
+    expect(applicableViolations(f)).toContain('tooShort');
+    const v = generateInvalidValue(f, 'tooShort') as string;
+    expect(v.length).toBeLessThan(20);
+  });
+
   it('exceeds maxLength on the tooLong kind', () => {
     const v = generateInvalidValue(field({ type: 'text', maxLength: 8 }), 'tooLong') as string;
     expect(v.length).toBeGreaterThan(8);
   });
 
-  it('puts a number below min on the outOfRange kind', () => {
+  it('puts a number below min on the belowMin kind', () => {
     const f = field({ type: 'number', min: '1', max: '10' });
-    expect(generateInvalidValue(f, 'outOfRange')).toBe('0');
+    expect(generateInvalidValue(f, 'belowMin')).toBe('0');
   });
 
-  it('emits an out-of-range date before min on the outOfRange kind', () => {
+  it('puts a number above max on the aboveMax kind', () => {
+    const f = field({ type: 'number', min: '1', max: '10' });
+    expect(generateInvalidValue(f, 'aboveMax')).toBe('11');
+  });
+
+  it('emits a date before min on the belowMin kind', () => {
     const f = field({ type: 'date', min: '2020-01-01' });
-    const v = generateInvalidValue(f, 'outOfRange') as string;
+    const v = generateInvalidValue(f, 'belowMin') as string;
     expect(v < '2020-01-01').toBe(true);
+  });
+
+  it('emits a date after max on the aboveMax kind', () => {
+    const f = field({ type: 'date', max: '2020-12-31' });
+    const v = generateInvalidValue(f, 'aboveMax') as string;
+    expect(v > '2020-12-31').toBe(true);
+  });
+
+  it('violates a hint-stated numeric minimum that has no HTML min attribute', () => {
+    const f = field({ type: 'number', hint: 'You must be 18 or older' });
+    expect(generateInvalidValue(f, 'belowMin')).toBe('17');
+  });
+
+  it('undercuts the larger of HTML min and hint-stated min on belowMin', () => {
+    const f = field({ type: 'number', min: '1', hint: 'Must be at least 10' });
+    expect(generateInvalidValue(f, 'belowMin')).toBe('9');
+  });
+
+  it('exceeds the smaller of HTML max and hint-stated max on aboveMax', () => {
+    const f = field({ type: 'number', max: '100', hint: 'no more than 50' });
+    expect(generateInvalidValue(f, 'aboveMax')).toBe('51');
   });
 
   it('empties on the empty kind', () => {
@@ -63,6 +96,32 @@ describe('generateInvalidValue — generic-garbage fallback', () => {
   });
 });
 
+describe('generateInvalidValue — number fields skip non-landing passes', () => {
+  it('does not express invalidChars (non-numeric junk is dropped by number inputs)', () => {
+    expect(applicableViolations(field({ type: 'number' }))).not.toContain('invalidChars');
+  });
+
+  it('skips (null) an unconstrained number on the invalidChars pass', () => {
+    expect(generateInvalidValue(field({ type: 'number' }), 'invalidChars')).toBeNull();
+  });
+
+  it('skips (null) a number on a pass it cannot express, rather than emitting junk', () => {
+    // number with only a min can not express tooLong → skip, not !!!INVALID!!!
+    expect(generateInvalidValue(field({ type: 'number', min: '1' }), 'tooLong')).toBeNull();
+  });
+
+  it('still empties a required number on the empty pass', () => {
+    expect(generateInvalidValue(field({ type: 'number', required: true }), 'empty')).toBe('');
+  });
+
+  it('does not express tooShort/tooLong (length violations do not land on number inputs)', () => {
+    const f = field({ type: 'number', minLength: 5, maxLength: 8 });
+    const kinds = applicableViolations(f);
+    expect(kinds).not.toContain('tooShort');
+    expect(kinds).not.toContain('tooLong');
+  });
+});
+
 describe('generateInvalidValue — structured types ignore the kind', () => {
   it('leaves checkboxes unchecked regardless of kind', () => {
     expect(generateInvalidValue(field({ type: 'checkbox' }), 'invalidChars')).toBe(false);
@@ -76,7 +135,7 @@ describe('generateInvalidValue — structured types ignore the kind', () => {
 
   it('deselects a select regardless of kind', () => {
     const f = field({ type: 'select', options: ['a', 'b'] });
-    expect(generateInvalidValue(f, 'outOfRange')).toBe('');
+    expect(generateInvalidValue(f, 'aboveMax')).toBe('');
   });
 
   it('breaks a date-triplet part regardless of kind', () => {
@@ -106,10 +165,10 @@ describe('activeViolationKinds — the form-wide cycle', () => {
       field({ type: 'email' }),                       // invalidChars
       field({ type: 'text', minLength: 5 }),          // invalidChars, tooShort
       field({ type: 'text', maxLength: 5 }),          // invalidChars, tooLong
-      field({ type: 'number', min: '1', required: true }), // invalidChars, outOfRange, empty
+      field({ type: 'number', min: '1', max: '10', required: true }), // belowMin, aboveMax, empty
     ];
     expect(activeViolationKinds(fields)).toEqual([
-      'invalidChars', 'tooShort', 'tooLong', 'outOfRange', 'empty',
+      'invalidChars', 'tooShort', 'tooLong', 'belowMin', 'aboveMax', 'empty',
     ]);
   });
 
@@ -147,9 +206,10 @@ describe('cycling across the whole form', () => {
 describe('violationLabel — human-readable pass names', () => {
   it('maps each kind to a label', () => {
     expect(violationLabel('invalidChars')).toBe('invalid format');
-    expect(violationLabel('tooShort')).toBe('below minimum');
-    expect(violationLabel('tooLong')).toBe('above maximum');
-    expect(violationLabel('outOfRange')).toBe('out of range');
+    expect(violationLabel('tooShort')).toBe('below minimum length');
+    expect(violationLabel('tooLong')).toBe('above maximum length');
+    expect(violationLabel('belowMin')).toBe('below minimum value');
+    expect(violationLabel('aboveMax')).toBe('above maximum value');
     expect(violationLabel('empty')).toBe('empty');
   });
 });
