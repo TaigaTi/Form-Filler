@@ -231,21 +231,29 @@ function findDatePartLabel(el: HTMLInputElement, doc: Document): DatePart | null
   return null;
 }
 
+// Inputs that can hold a numeric date part. Beyond <input type="number">, split
+// date fields are commonly rendered as text inputs with inputmode="numeric"
+// (e.g. the GovBB alpha site). findDatePartLabel + the all-three co-location
+// requirement below filter out anything that isn't an actual Day/Month/Year box,
+// so casting this net wide can't produce false positives.
+const DATE_PART_INPUT_SELECTOR =
+  'input[type="number"], input[type="text"], input[type="tel"], input:not([type]), input[inputmode="numeric"]';
+
 /**
  * Scans the document for Day/Month/Year input triplets and tags them with a shared
  * group id. A triplet is any ancestor (typically <fieldset data-date-field>) that
- * contains one Day, one Month, and one Year number input.
+ * contains one Day, one Month, and one Year numeric input.
  */
 function preprocessDateTriplets(
   doc: Document
 ): WeakMap<HTMLInputElement, { part: DatePart; groupId: string }> {
   const map = new WeakMap<HTMLInputElement, { part: DatePart; groupId: string }>();
 
-  const numberInputs = Array.from(
-    doc.querySelectorAll<HTMLInputElement>('input[type="number"]')
+  const candidateInputs = Array.from(
+    doc.querySelectorAll<HTMLInputElement>(DATE_PART_INPUT_SELECTOR)
   );
   const partOf = new Map<HTMLInputElement, DatePart>();
-  for (const inp of numberInputs) {
+  for (const inp of candidateInputs) {
     const part = findDatePartLabel(inp, doc);
     if (part) partOf.set(inp, part);
   }
@@ -262,7 +270,7 @@ function preprocessDateTriplets(
 
     while (container) {
       const descendants = Array.from(
-        container.querySelectorAll<HTMLInputElement>('input[type="number"]')
+        container.querySelectorAll<HTMLInputElement>(DATE_PART_INPUT_SELECTOR)
       );
       monthInp = descendants.find((i) => partOf.get(i) === 'month' && !claimed.has(i));
       yearInp = descendants.find((i) => partOf.get(i) === 'year' && !claimed.has(i));

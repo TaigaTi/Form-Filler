@@ -270,4 +270,41 @@ describe('extractFields', () => {
     expect(fields.map((f) => f.datePart)).toEqual(['day', 'month', 'year']);
     expect(fields[0].dateGroupId).toBe(fields[2].dateGroupId);
   });
+
+  it('detects a text/inputmode="numeric" triplet with label[for] (alpha-site markup)', () => {
+    const doc = makeDoc(`
+      <div class="flex flex-col">
+        <label for="dob">Date of birth</label>
+      </div>
+      <div class="flex gap-s">
+        <div class="flex flex-col">
+          <label for="dob-day">Day</label>
+          <div class="relative"><input id="dob-day" inputmode="numeric" type="text" name="dob[day]" /></div>
+        </div>
+        <div class="flex flex-col">
+          <label for="dob-month">Month</label>
+          <div class="relative"><input id="dob-month" inputmode="numeric" type="text" name="dob[month]" /></div>
+        </div>
+        <div class="flex flex-col">
+          <label for="dob-year">Year</label>
+          <div class="relative"><input id="dob-year" inputmode="numeric" type="text" name="dob[year]" /></div>
+        </div>
+      </div>
+    `);
+    const fields = extractFields(doc);
+    expect(fields).toHaveLength(3);
+    expect(fields.map((f) => f.datePart)).toEqual(['day', 'month', 'year']);
+    expect(fields[0].dateGroupId).toBeDefined();
+    expect(fields[0].dateGroupId).toBe(fields[1].dateGroupId);
+    expect(fields[1].dateGroupId).toBe(fields[2].dateGroupId);
+  });
+
+  it('does not tag a lone "Day" text input with no Month/Year sibling', () => {
+    const doc = makeDoc(`
+      <div><label for="d">Day</label><input id="d" type="text" inputmode="numeric" /></div>
+    `);
+    const fields = extractFields(doc);
+    expect(fields[0].datePart).toBeUndefined();
+    expect(fields[0].dateGroupId).toBeUndefined();
+  });
 });
