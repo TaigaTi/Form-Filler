@@ -23,7 +23,8 @@ export function generateFromHintExample(hint: string): string | null {
 /**
  * Attempts to generate a string that satisfies a HTML `pattern` attribute by
  * structurally substituting known character-class tokens with real characters.
- * Returns null when the pattern is too complex to handle locally (→ AI fallback).
+ * Returns null when the pattern is too complex to handle locally, so the caller
+ * leaves the field blank rather than risk an invalid value.
  */
 export function generateForPattern(pattern: string): string | null {
   try {
@@ -462,9 +463,9 @@ export function generateValue(
         if (patternValue !== null && re.test(patternValue)) {
           return applyMaxLength(patternValue, field.maxLength);
         }
-      } catch { /* invalid regex — fall through to AI */ }
+      } catch { /* invalid regex — leave the field blank */ }
 
-      return null; // signal AI fallback needed
+      return null; // no satisfying value found → leave blank
     }
   }
 }

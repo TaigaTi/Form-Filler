@@ -45,7 +45,7 @@ export function applyValues(instructions: FillInstruction[]): FillResult {
       const group = el.name
         ? Array.from(
             document.querySelectorAll<HTMLInputElement>(
-              `input[type="radio"][name="${el.name}"]`
+              `input[type="radio"][name="${CSS.escape(el.name)}"]`
             )
           )
         : [el];

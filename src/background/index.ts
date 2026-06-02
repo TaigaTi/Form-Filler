@@ -24,7 +24,7 @@ import {
 const pendingCorrections = new Map<number, FillInstruction[]>();
 
 async function getSettings(): Promise<StoredSettings> {
-  const r = await chrome.storage.sync.get([
+  const r = await chrome.storage.local.get([
     'lastFillResult', 'testValidationMode', 'invalidCycleStep',
   ]);
   return {
@@ -88,14 +88,14 @@ async function runInvalidFill(
   pendingCorrections.delete(tabId);
 
   // Advance the cycle so the next fill targets the next constraint per field.
-  await chrome.storage.sync.set({ invalidCycleStep: step + 1 });
+  await chrome.storage.local.set({ invalidCycleStep: step + 1 });
 
   const result: FillResult = {
     fieldsFilled: instructions.length,
     fieldsSkipped: fields.length - instructions.length,
     timestamp: Date.now(),
   };
-  await chrome.storage.sync.set({ lastFillResult: result });
+  await chrome.storage.local.set({ lastFillResult: result });
   sendToast(tabId, 'success',
     `✓ ${result.fieldsFilled} fields filled — ${violationLabel(kind)} (invalid mode)`);
   return result;
@@ -121,7 +121,7 @@ async function runFill(tabId: number): Promise<FillResult> {
   }
 
   // Content script is confirmed alive now — show the loading toast, which stays
-  // up through the (possibly slow) AI call until values are applied.
+  // up until values are generated and applied.
   sendToast(tabId, 'loading', 'Filling form…');
 
   const instructions: FillInstruction[] = [];
@@ -169,7 +169,7 @@ async function runFill(tabId: number): Promise<FillResult> {
     timestamp: Date.now(),
   };
 
-  await chrome.storage.sync.set({ lastFillResult: result });
+  await chrome.storage.local.set({ lastFillResult: result });
 
   sendToast(tabId, 'success', `✓ ${result.fieldsFilled} fields filled`);
 
@@ -194,7 +194,7 @@ chrome.commands.onCommand.addListener(async (command) => {
     const { testValidationMode } = await getSettings();
     const enabled = !testValidationMode;
     // Enabling restarts the cycle so the next fill begins at pass 1 (invalid format).
-    await chrome.storage.sync.set(
+    await chrome.storage.local.set(
       enabled ? { testValidationMode: true, invalidCycleStep: 0 } : { testValidationMode: false }
     );
     // Toast confirms the new state — the popup is closed when using a shortcut.
@@ -230,7 +230,7 @@ chrome.runtime.onMessage.addListener(
         }
 
         case 'SET_TEST_MODE':
-          await chrome.storage.sync.set({ testValidationMode: message.enabled });
+          await chrome.storage.local.set({ testValidationMode: message.enabled });
           sendResponse({ type: 'SETTINGS', settings: await getSettings() });
           break;
 
