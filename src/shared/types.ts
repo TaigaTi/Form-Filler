@@ -39,8 +39,9 @@ export interface StoredSettings {
   // When on, fills with deliberately-invalid data to exercise form validation.
   testValidationMode?: boolean;
   // Which step the form-wide invalid-data cycle is on; incremented after each
-  // invalid-mode fill so repeated fills walk the form's active violation kinds
-  // (one kind per pass: format → below-min → above-max → out-of-range → empty).
+  // invalid-mode fill so repeated fills walk the form's active violation kinds (one
+  // kind per pass: format → below-min length → above-max length → below-min value →
+  // above-max value → empty).
   invalidCycleStep?: number;
 }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateValue, generateForPattern, generateFromHintExample, generateGenericText, parseMinChars } from '../src/shared/valueGenerator';
+import { generateValue, generateForPattern, generateFromHintExample, generateGenericText, parseMinChars, parseNumericBounds } from '../src/shared/valueGenerator';
 import { FieldMeta } from '../src/shared/types';
 
 function field(overrides: Partial<FieldMeta>): FieldMeta {
@@ -263,6 +263,49 @@ describe('parseMinChars', () => {
   it('returns null when no requirement is stated', () => {
     expect(parseMinChars('Tell us a bit about yourself')).toBeNull();
     expect(parseMinChars(undefined)).toBeNull();
+  });
+});
+
+describe('parseNumericBounds', () => {
+  it('parses a "between X and Y" range', () => {
+    expect(parseNumericBounds('Enter a value between 1 and 100')).toEqual({ min: 1, max: 100 });
+  });
+  it('parses "X or older" as a lower bound', () => {
+    expect(parseNumericBounds('You must be 18 or older')).toEqual({ min: 18 });
+  });
+  it('parses "at least N" as a lower bound', () => {
+    expect(parseNumericBounds('Must be at least 5')).toEqual({ min: 5 });
+  });
+  it('parses "no more than N" as an upper bound', () => {
+    expect(parseNumericBounds('Choose no more than 50')).toEqual({ max: 50 });
+  });
+  it('parses "maximum of N" as an upper bound', () => {
+    expect(parseNumericBounds('A maximum of 10 is allowed')).toEqual({ max: 10 });
+  });
+  it('parses "up to N" as an upper bound', () => {
+    expect(parseNumericBounds('Request up to 3 copies')).toEqual({ max: 3 });
+  });
+  it('handles negative and decimal bounds', () => {
+    expect(parseNumericBounds('between -2.5 and 2.5')).toEqual({ min: -2.5, max: 2.5 });
+  });
+  it('parses "no fewer than N" as a lower bound', () => {
+    expect(parseNumericBounds('Provide no fewer than 3')).toEqual({ min: 3 });
+  });
+  it('parses "at most N" as an upper bound', () => {
+    expect(parseNumericBounds('Select at most 7')).toEqual({ max: 7 });
+  });
+  it('parses "N or less" as an upper bound', () => {
+    expect(parseNumericBounds('Enter 5 or less')).toEqual({ max: 5 });
+  });
+  it('ignores character-length phrasing (handled by parseMinChars)', () => {
+    expect(parseNumericBounds('at least 20 characters')).toBeNull();
+  });
+  it('does not match a number bound inside a word like "admin."', () => {
+    expect(parseNumericBounds('Contact admin. 9 for help')).toBeNull();
+  });
+  it('returns null when no numeric bound is stated', () => {
+    expect(parseNumericBounds('Tell us a bit about yourself')).toBeNull();
+    expect(parseNumericBounds(undefined)).toBeNull();
   });
 });
 
