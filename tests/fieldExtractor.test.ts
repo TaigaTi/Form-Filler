@@ -307,4 +307,61 @@ describe('extractFields', () => {
     expect(fields[0].datePart).toBeUndefined();
     expect(fields[0].dateGroupId).toBeUndefined();
   });
+
+  it('handles id/name attributes containing a double quote without throwing', () => {
+    const doc = makeDoc('');
+    // Radio group whose name contains a double quote
+    const r1 = doc.createElement('input');
+    r1.type = 'radio';
+    r1.setAttribute('name', 'choice"x');
+    r1.value = 'a';
+    const r2 = doc.createElement('input');
+    r2.type = 'radio';
+    r2.setAttribute('name', 'choice"x');
+    r2.value = 'b';
+    // Text input whose id contains a double quote, with an associated label
+    const label = doc.createElement('label');
+    label.setAttribute('for', 'fld"y');
+    label.textContent = 'Quoted Label';
+    const input = doc.createElement('input');
+    input.type = 'text';
+    input.setAttribute('id', 'fld"y');
+    doc.body.append(r1, r2, label, input);
+
+    let fields: ReturnType<typeof extractFields> = [];
+    expect(() => {
+      fields = extractFields(doc);
+    }).not.toThrow();
+
+    const radio = fields.find((f) => f.type === 'radio');
+    expect(radio?.options).toEqual(['a', 'b']);
+    const text = fields.find((f) => f.type === 'text');
+    expect(text?.label).toBe('Quoted Label');
+  });
+
+  it('caps the preceding-sibling label walk at 3 hops', () => {
+    const doc = makeDoc(`
+      <p>Unrelated paragraph</p>
+      <span></span>
+      <span></span>
+      <span></span>
+      <input type="text" />
+    `);
+    const fields = extractFields(doc);
+    expect(fields[0].label).not.toBe('Unrelated paragraph');
+  });
+
+  it('excludes disabled and empty-value options from select options', () => {
+    const doc = makeDoc(`
+      <label for="country">Country</label>
+      <select id="country">
+        <option value="">Select...</option>
+        <option value="x" disabled>Disabled</option>
+        <option value="BB">Barbados</option>
+        <option value="US">United States</option>
+      </select>
+    `);
+    const fields = extractFields(doc);
+    expect(fields[0].options).toEqual(['BB', 'US']);
+  });
 });

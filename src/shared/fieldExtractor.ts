@@ -111,7 +111,7 @@ function resolveLabel(el: HTMLElement, doc: Document): string {
   const id = el.id;
   if (id) {
     const text = doc
-      .querySelector<HTMLLabelElement>(`label[for="${id}"]`)
+      .querySelector<HTMLLabelElement>(`label[for="${CSS.escape(id)}"]`)
       ?.textContent?.trim();
     if (text) return text;
   }
@@ -125,12 +125,15 @@ function resolveLabel(el: HTMLElement, doc: Document): string {
     if (text) return text;
   }
 
-  // Priority 5: preceding sibling text content
+  // Priority 5: preceding sibling text content — capped at 3 hops (mirrors the
+  // prevChecked < 3 walk in resolveHint) so we don't grab unrelated far-away text
   let sibling = el.previousElementSibling;
-  while (sibling) {
+  let siblingChecked = 0;
+  while (sibling && siblingChecked < 3) {
     const text = sibling.textContent?.trim();
     if (text) return text;
     sibling = sibling.previousElementSibling;
+    siblingChecked++;
   }
 
   // Priority 6: placeholder / name / id
@@ -174,7 +177,7 @@ export function resolveOptionLabel(el: HTMLElement, doc: Document): string {
 
   const id = el.id;
   if (id) {
-    const text = doc.querySelector<HTMLLabelElement>(`label[for="${id}"]`)?.textContent?.trim();
+    const text = doc.querySelector<HTMLLabelElement>(`label[for="${CSS.escape(id)}"]`)?.textContent?.trim();
     if (text) return text;
   }
 
@@ -206,7 +209,7 @@ function findDatePartLabel(el: HTMLInputElement, doc: Document): DatePart | null
 
   // <label for="id"> — only if id is set
   if (!text && el.id) {
-    text = doc.querySelector(`label[for="${el.id}"]`)?.textContent ?? '';
+    text = doc.querySelector(`label[for="${CSS.escape(el.id)}"]`)?.textContent ?? '';
   }
 
   // Previous sibling <label>
@@ -373,6 +376,7 @@ export function extractFields(doc: Document = document): FieldMeta[] {
 
     if (type === 'select') {
       meta.options = Array.from((el as HTMLSelectElement).options)
+        .filter((o) => !o.disabled)
         .map((o) => o.value)
         .filter((v) => v !== '');
     }
@@ -383,7 +387,7 @@ export function extractFields(doc: Document = document): FieldMeta[] {
       // report "on", so the label is the only way to tell options apart (and to
       // pick the right one at fill time). Fall back to value when there's no label.
       meta.options = Array.from(
-        doc.querySelectorAll<HTMLInputElement>(`input[type="radio"][name="${elementName}"]`)
+        doc.querySelectorAll<HTMLInputElement>(`input[type="radio"][name="${CSS.escape(elementName)}"]`)
       ).map((r) => resolveOptionLabel(r, doc) || r.value);
       const groupLabel = resolveGroupLabel(el, doc);
       if (groupLabel) meta.groupLabel = groupLabel;
